@@ -19,29 +19,30 @@ def process_str(text):
 
 def get_movies_by_keyword(keyword):
     keyword_tokens = process_str(keyword)
-    
-    with open("data/movies.json", "r") as file:
-        movies = json.load(file)["movies"]
+
+    inverted_idx = InvertedIndex("data/movies.json")
+    try:
+        inverted_idx.load()
+    except Exception as e:
+        print(e)
+
 
     found_movies = []
-    for movie in movies:
-        movie_tokens = process_str(movie["title"])
-        
-        try:
-            for movie_token in movie_tokens:
-                for keyword_token in keyword_tokens:
-                    if keyword_token in movie_token:
-                        found_movies.append(movie["title"])
-                        # terminate both for loops
+    # instead, iterate over each token in the query, and use the inverted index to get any matching documents for each token. Once you have 5 results, 
+    # stop searching and just return them. Print the resulting document titles and IDs.
+    try:
+        for keyword_token in keyword_tokens:
+            docs = inverted_idx.get_documents(keyword_token)
+            if docs:
+                for doc in docs:
+                    found_movies.append({"id": doc, "title": inverted_idx.docmap[doc]["title"]})
+                    if len(found_movies) == 5:
                         raise StopIteration
-        except StopIteration:
-            pass
-
-        if len(found_movies) == 5:
-            break
+    except StopIteration:
+        pass
         
-    for i, movie in enumerate(found_movies):
-        print(f"{i + 1} {movie}")
+    for movie in found_movies:
+        print(f"{movie["id"]} {movie["title"]}")
 
 import pickle
 from pathlib import Path
@@ -60,16 +61,16 @@ class InvertedIndex():
         text_tokens = process_str(text)
         for text_token in text_tokens:
             try:
-                self.index[text_token.lower()].add(doc_id)
+                self.index[text_token].add(doc_id)
             except KeyError:
-                self.index[text_token.lower()] = {doc_id}
+                self.index[text_token] = {doc_id}
 
     def get_documents(self, term):
         """get the set of document IDs for a given token, and return them as a list, sorted in ascending order"""
         # lowercase term
         try:
             return sorted(self.index[term.lower()])
-        except IndexError:
+        except KeyError:
             return []
 
     def build(self):
@@ -97,9 +98,24 @@ class InvertedIndex():
         with open("cache/docmap.pkl", "wb") as file:
             pickle.dump(self.docmap, file)
 
+    def load(self):
+        """load the index and docmap from disk using the pickle module's load function"""
+        # use cache/index.pkl for the index
+        # use cache/docmap.pkl for the docmap
+        # raise an error if the files don't exist
+        try:
+            with open("cache/index.pkl", "rb") as file:
+                self.index = pickle.load(file)
+        except FileNotFoundError:
+            raise Exception("cache/index.pkl is missing")
+        
+        try:
+            with open("cache/docmap.pkl", "rb") as file:
+                self.docmap = pickle.load(file)
+        except FileNotFoundError:
+            raise Exception("cache/docmap.pkl is missing")
+
 def build_idx():
     inverted_idx = InvertedIndex("data/movies.json")
     inverted_idx.build()
     inverted_idx.save()
-    docs = inverted_idx.get_documents("merida")
-    print(f"First document for token 'merida' = {docs[0]}")
