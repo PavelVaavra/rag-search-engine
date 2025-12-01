@@ -46,6 +46,7 @@ def get_movies_by_keyword(keyword):
 
 import pickle
 from pathlib import Path
+from collections import Counter
 
 class InvertedIndex():
     def __init__(self, path):
@@ -55,10 +56,13 @@ class InvertedIndex():
         self.index = {}
         # a dictionary mapping document IDs to their full document objects.
         self.docmap = {}
+        # a dictionary of document IDs to Counter objects for keeping track of how many times each term appears in each document
+        self.term_frequencies = {}
 
     def __add_document(self, doc_id, text):
         """tokenize the input text, then add each token to the index with the document ID"""
         text_tokens = process_str(text)
+        self.term_frequencies[doc_id].update(text_tokens)
         for text_token in text_tokens:
             try:
                 self.index[text_token].add(doc_id)
@@ -81,9 +85,23 @@ class InvertedIndex():
             movies = json.load(file)["movies"]
 
         for movie in movies:
+            self.term_frequencies[movie["id"]] = Counter()
             self.__add_document(movie["id"], f"{movie['title']} {movie['description']}")
 
             self.docmap[movie["id"]] = movie
+
+    def get_tf(self, doc_id, term):
+        """return the times the token appears in the document with the given ID"""
+        # if the term doesn't exist in that document, return 0
+        # be sure to tokenize the term, but assume that there is only one token. If there's more than one, raise an exception.
+        term_token = process_str(term)
+        if len(term_token) != 1:
+            raise Exception("term argument is more than one token")
+        
+        try:
+            return self.term_frequencies[doc_id][term_token[0]]
+        except KeyError:
+            return 0
 
     def save(self):
         """save the index and docmap attributes to disk using the pickle module's dump function"""
@@ -97,6 +115,9 @@ class InvertedIndex():
 
         with open("cache/docmap.pkl", "wb") as file:
             pickle.dump(self.docmap, file)
+
+        with open("cache/term_frequencies.pkl", "wb") as file:
+            pickle.dump(self.term_frequencies, file)
 
     def load(self):
         """load the index and docmap from disk using the pickle module's load function"""
@@ -114,8 +135,23 @@ class InvertedIndex():
                 self.docmap = pickle.load(file)
         except FileNotFoundError:
             raise Exception("cache/docmap.pkl is missing")
+        
+        try:
+            with open("cache/term_frequencies.pkl", "rb") as file:
+                self.term_frequencies = pickle.load(file)
+        except FileNotFoundError:
+            raise Exception("cache/term_frequencies.pkl is missing")
 
 def build_idx():
     inverted_idx = InvertedIndex("data/movies.json")
     inverted_idx.build()
     inverted_idx.save()
+
+def get_tf(id, term):
+    inverted_idx = InvertedIndex("data/movies.json")
+    try:
+        inverted_idx.load()
+    except Exception as e:
+        print(e)
+
+    print(f"Term frequency for {term} in document {id} is {inverted_idx.get_tf(id, term)}")
