@@ -2,12 +2,22 @@ import json
 import string
 from nltk.stem import PorterStemmer
 
+from .search_utils import (
+    DEFAULT_SEARCH_LIMIT,
+    DATA_PATH,
+    STOPWORDS_PATH,
+    CACHE_DIR,
+    INDEX_FILE_NAME,
+    DOCMAP_FILE_NAME,
+    TERM_FREQUENCIES_FILE_NAME
+)
+
 def process_str(text):
     """lowercase, delete punctuation, split words, 
     remove empty tokens and stopwords, stemming"""
     translator = str.maketrans("", "", string.punctuation)
 
-    with open("data/stopwords.txt", "r") as file:
+    with open(STOPWORDS_PATH, "r") as file:
         stop_words = file.read().splitlines()
 
     stemmer = PorterStemmer()
@@ -20,7 +30,7 @@ def process_str(text):
 def get_movies_by_keyword(keyword):
     keyword_tokens = process_str(keyword)
 
-    inverted_idx = InvertedIndex("data/movies.json")
+    inverted_idx = InvertedIndex(DATA_PATH)
     try:
         inverted_idx.load()
     except Exception as e:
@@ -36,7 +46,7 @@ def get_movies_by_keyword(keyword):
             if docs:
                 for doc in docs:
                     found_movies.append({"id": doc, "title": inverted_idx.docmap[doc]["title"]})
-                    if len(found_movies) == 5:
+                    if len(found_movies) == DEFAULT_SEARCH_LIMIT:
                         raise StopIteration
     except StopIteration:
         pass
@@ -45,6 +55,7 @@ def get_movies_by_keyword(keyword):
         print(f"{movie["id"]} {movie["title"]}")
 
 import pickle
+import os
 from pathlib import Path
 from collections import Counter
 
@@ -110,13 +121,13 @@ class InvertedIndex():
         # Have this method create the cache directory if it doesn't exist (before trying to write files into it).
         Path("cache").mkdir(parents=True, exist_ok=True)
 
-        with open("cache/index.pkl", "wb") as file:
+        with open(os.path.join(CACHE_DIR, INDEX_FILE_NAME), "wb") as file:
             pickle.dump(self.index, file)
 
-        with open("cache/docmap.pkl", "wb") as file:
+        with open(os.path.join(CACHE_DIR, DOCMAP_FILE_NAME), "wb") as file:
             pickle.dump(self.docmap, file)
 
-        with open("cache/term_frequencies.pkl", "wb") as file:
+        with open(os.path.join(CACHE_DIR, TERM_FREQUENCIES_FILE_NAME), "wb") as file:
             pickle.dump(self.term_frequencies, file)
 
     def load(self):
@@ -125,30 +136,30 @@ class InvertedIndex():
         # use cache/docmap.pkl for the docmap
         # raise an error if the files don't exist
         try:
-            with open("cache/index.pkl", "rb") as file:
+            with open(os.path.join(CACHE_DIR, INDEX_FILE_NAME), "rb") as file:
                 self.index = pickle.load(file)
         except FileNotFoundError:
             raise Exception("cache/index.pkl is missing")
         
         try:
-            with open("cache/docmap.pkl", "rb") as file:
+            with open(os.path.join(CACHE_DIR, DOCMAP_FILE_NAME), "rb") as file:
                 self.docmap = pickle.load(file)
         except FileNotFoundError:
             raise Exception("cache/docmap.pkl is missing")
         
         try:
-            with open("cache/term_frequencies.pkl", "rb") as file:
+            with open(os.path.join(CACHE_DIR, TERM_FREQUENCIES_FILE_NAME), "rb") as file:
                 self.term_frequencies = pickle.load(file)
         except FileNotFoundError:
             raise Exception("cache/term_frequencies.pkl is missing")
 
 def build_idx():
-    inverted_idx = InvertedIndex("data/movies.json")
+    inverted_idx = InvertedIndex(DATA_PATH)
     inverted_idx.build()
     inverted_idx.save()
 
 def get_tf(id, term):
-    inverted_idx = InvertedIndex("data/movies.json")
+    inverted_idx = InvertedIndex(DATA_PATH)
     try:
         inverted_idx.load()
     except Exception as e:
@@ -159,7 +170,7 @@ def get_tf(id, term):
 import math
 
 def get_idf(term):
-    inverted_idx = InvertedIndex("data/movies.json")
+    inverted_idx = InvertedIndex(DATA_PATH)
     try:
         inverted_idx.load()
     except Exception as e:
