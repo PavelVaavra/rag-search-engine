@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 
 import argparse
-from lib.helpers import get_movies_by_keyword, build_idx, get_tf, get_idf
+from lib.helpers import (
+    get_movies_by_keyword, 
+    build_idx, 
+    get_tf, 
+    get_idf, 
+    get_tfidf
+)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -19,6 +25,10 @@ def main() -> None:
     idf_parser = subparsers.add_parser("idf", help="Calculate inverse document frequency")
     idf_parser.add_argument("term", type=str, help="term for which inverse document frequency will be shown")
 
+    tfidf_parser = subparsers.add_parser("tfidf", help="Term Frequency-Inverse Document Frequency for a given term and document ID")
+    tfidf_parser.add_argument("doc_id", type=int, help="document id")
+    tfidf_parser.add_argument("term", type=str, help="term for which Term Frequency-Inverse Document Frequency will be shown")
+
     args = parser.parse_args()
 
     match args.command:
@@ -29,9 +39,14 @@ def main() -> None:
             print("Building inverted index")
             build_idx()
         case "tf":
-            get_tf(args.id, args.term)
+            tf = get_tf(args.id, args.term)
+            print(f"Term frequency for {args.term} in document {args.id} is {tf}")
         case "idf":
-            get_idf(args.term)
+            idf = get_idf(args.term)
+            print(f"Inverse document frequency of '{args.term}': {idf:.2f}")
+        case "tfidf":
+            tf_idf = get_tfidf(args.doc_id, args.term)
+            print(f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}")
         case _:
             parser.print_help()
 

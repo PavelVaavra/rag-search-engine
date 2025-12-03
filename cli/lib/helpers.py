@@ -154,7 +154,7 @@ def get_tf(id, term):
     except Exception as e:
         print(e)
 
-    print(f"Term frequency for {term} in document {id} is {inverted_idx.get_tf(id, term)}")
+    return inverted_idx.get_tf(id, term)
 
 import math
 
@@ -167,5 +167,7 @@ def get_idf(term):
 
     doc_count = len(inverted_idx.docmap)
     term_doc_count = len(inverted_idx.get_documents(process_str(term)[0]))
-    idf = math.log((doc_count + 1) / (term_doc_count + 1))
-    print(f"Inverse document frequency of '{term}': {idf:.2f}")
+    return math.log((doc_count + 1) / (term_doc_count + 1))
+
+def get_tfidf(id, term):
+    return get_tf(id, term) * get_idf(term)
