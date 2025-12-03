@@ -155,3 +155,17 @@ def get_tf(id, term):
         print(e)
 
     print(f"Term frequency for {term} in document {id} is {inverted_idx.get_tf(id, term)}")
+
+import math
+
+def get_idf(term):
+    inverted_idx = InvertedIndex("data/movies.json")
+    try:
+        inverted_idx.load()
+    except Exception as e:
+        print(e)
+
+    doc_count = len(inverted_idx.docmap)
+    term_doc_count = len(inverted_idx.get_documents(process_str(term)[0]))
+    idf = math.log((doc_count + 1) / (term_doc_count + 1))
+    print(f"Inverse document frequency of '{term}': {idf:.2f}")

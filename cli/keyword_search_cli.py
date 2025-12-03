@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-from lib.helpers import get_movies_by_keyword, build_idx, get_tf
+from lib.helpers import get_movies_by_keyword, build_idx, get_tf, get_idf
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -16,6 +16,9 @@ def main() -> None:
     tf_parser.add_argument("id", type=int, help="document id")
     tf_parser.add_argument("term", type=str, help="term for which term frequency will be shown")
 
+    idf_parser = subparsers.add_parser("idf", help="Calculate inverse document frequency")
+    idf_parser.add_argument("term", type=str, help="term for which inverse document frequency will be shown")
+
     args = parser.parse_args()
 
     match args.command:
@@ -27,6 +30,8 @@ def main() -> None:
             build_idx()
         case "tf":
             get_tf(args.id, args.term)
+        case "idf":
+            get_idf(args.term)
         case _:
             parser.print_help()
 
