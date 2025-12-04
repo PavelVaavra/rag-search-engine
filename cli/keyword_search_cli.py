@@ -6,7 +6,8 @@ from lib.helpers import (
     build_idx, 
     get_tf, 
     get_idf, 
-    get_tfidf
+    get_tfidf,
+    bm25_idf_command
 )
 
 def main() -> None:
@@ -51,7 +52,8 @@ def main() -> None:
             tf_idf = get_tfidf(args.doc_id, args.term)
             print(f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}")
         case "bm25idf":
-            pass
+            bm25idf = bm25_idf_command(args.term)
+            print(f"BM25 IDF score of '{args.term}': {bm25idf:.2f}")
         case _:
             parser.print_help()
 

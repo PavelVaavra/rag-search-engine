@@ -1,5 +1,11 @@
 import json
 import string
+import math
+import pickle
+import os
+
+from pathlib import Path
+from collections import Counter
 from nltk.stem import PorterStemmer
 
 from .search_utils import (
@@ -54,11 +60,6 @@ def get_movies_by_keyword(keyword):
     for movie in found_movies:
         print(f"{movie["id"]} {movie["title"]}")
 
-import pickle
-import os
-from pathlib import Path
-from collections import Counter
-
 class InvertedIndex():
     def __init__(self, path):
         # path to json data
@@ -108,11 +109,23 @@ class InvertedIndex():
         term_token = process_str(term)
         if len(term_token) != 1:
             raise Exception("term argument is more than one token")
+        term_token = term_token[0]
         
         try:
-            return self.term_frequencies[doc_id][term_token[0]]
+            return self.term_frequencies[doc_id][term_token]
         except KeyError:
             return 0
+        
+    def get_bm25_idf(self, term):
+        """"""
+        term_token = process_str(term)
+        if len(term_token) != 1:
+            raise Exception("term argument is more than one token")
+        term_token = term_token[0]
+
+        N = len(self.docmap)
+        df = len(self.get_documents(term_token))        
+        return math.log((N - df + 0.5) / (df + 0.5) + 1)
 
     def save(self):
         """save the index and docmap attributes to disk using the pickle module's dump function"""
@@ -167,8 +180,6 @@ def get_tf(id, term):
 
     return inverted_idx.get_tf(id, term)
 
-import math
-
 def get_idf(term):
     inverted_idx = InvertedIndex(DATA_PATH)
     try:
@@ -179,6 +190,15 @@ def get_idf(term):
     doc_count = len(inverted_idx.docmap)
     term_doc_count = len(inverted_idx.get_documents(process_str(term)[0]))
     return math.log((doc_count + 1) / (term_doc_count + 1))
+
+def bm25_idf_command(term):
+    inverted_idx = InvertedIndex(DATA_PATH)
+    try:
+        inverted_idx.load()
+    except Exception as e:
+        print(e)
+
+    return inverted_idx.get_bm25_idf(term)
 
 def get_tfidf(id, term):
     return get_tf(id, term) * get_idf(term)
