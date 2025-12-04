@@ -15,7 +15,8 @@ from .search_utils import (
     CACHE_DIR,
     INDEX_FILE_NAME,
     DOCMAP_FILE_NAME,
-    TERM_FREQUENCIES_FILE_NAME
+    TERM_FREQUENCIES_FILE_NAME,
+    BM25_K1
 )
 
 def process_str(text):
@@ -36,9 +37,8 @@ def process_str(text):
 def get_movies_by_keyword(keyword):
     keyword_tokens = process_str(keyword)
 
-    inverted_idx = InvertedIndex(DATA_PATH)
     try:
-        inverted_idx.load()
+        inverted_idx = get_inverted_idx_load(DATA_PATH)
     except Exception as e:
         print(e)
 
@@ -116,6 +116,10 @@ class InvertedIndex():
         except KeyError:
             return 0
         
+    def get_bm25_tf(self, doc_id, term, k1=BM25_K1):
+        tf = self.get_tf(doc_id, term)
+        return (tf * (k1 + 1)) / (tf + k1)
+        
     def get_bm25_idf(self, term):
         """"""
         term_token = process_str(term)
@@ -172,18 +176,24 @@ def build_idx():
     inverted_idx.save()
 
 def get_tf(id, term):
-    inverted_idx = InvertedIndex(DATA_PATH)
     try:
-        inverted_idx.load()
+        inverted_idx = get_inverted_idx_load(DATA_PATH)
     except Exception as e:
         print(e)
 
     return inverted_idx.get_tf(id, term)
 
-def get_idf(term):
-    inverted_idx = InvertedIndex(DATA_PATH)
+def bm25_tf_command(id, term, k1=BM25_K1):
     try:
-        inverted_idx.load()
+        inverted_idx = get_inverted_idx_load(DATA_PATH)
+    except Exception as e:
+        print(e)
+
+    return inverted_idx.get_bm25_tf(id, term, k1)
+
+def get_idf(term):
+    try:
+        inverted_idx = get_inverted_idx_load(DATA_PATH)
     except Exception as e:
         print(e)
 
@@ -192,9 +202,8 @@ def get_idf(term):
     return math.log((doc_count + 1) / (term_doc_count + 1))
 
 def bm25_idf_command(term):
-    inverted_idx = InvertedIndex(DATA_PATH)
     try:
-        inverted_idx.load()
+        inverted_idx = get_inverted_idx_load(DATA_PATH)
     except Exception as e:
         print(e)
 
@@ -202,3 +211,11 @@ def bm25_idf_command(term):
 
 def get_tfidf(id, term):
     return get_tf(id, term) * get_idf(term)
+
+def get_inverted_idx_load(DATA_PATH):
+    inverted_idx = InvertedIndex(DATA_PATH)
+    try:
+        inverted_idx.load()
+        return inverted_idx
+    except Exception as e:
+        raise e
