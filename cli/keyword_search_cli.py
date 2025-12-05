@@ -8,9 +8,10 @@ from lib.helpers import (
     get_idf, 
     get_tfidf,
     bm25_idf_command,
-    bm25_tf_command
+    bm25_tf_command,
+    get_bm25_search_command
 )
-from lib.search_utils import BM25_K1, BM25_B
+from lib.search_utils import BM25_K1, BM25_B, DEFAULT_SEARCH_LIMIT
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -41,6 +42,10 @@ def main() -> None:
     bm25_tf_parser.add_argument("k1", type=float, nargs='?', default=BM25_K1, help="Tunable BM25 K1 parameter")
     bm25_tf_parser.add_argument("b", type=float, nargs='?', default=BM25_B, help="Tunable BM25 b parameter")
 
+    bm25search_parser = subparsers.add_parser("bm25search", help="Search movies using full BM25 scoring")
+    bm25search_parser.add_argument("query", type=str, help="Search query")
+    bm25search_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="How many top documents should be shown")
+
     args = parser.parse_args()
 
     match args.command:
@@ -65,6 +70,14 @@ def main() -> None:
         case "bm25tf":
             bm25tf = bm25_tf_command(args.doc_id, args.term, args.k1, args.b)
             print(f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25tf:.2f}")
+        case "bm25search":
+            top_files = get_bm25_search_command(args.query, args.limit)
+            # 1. (15) The Adventures of Mowgli - Score: 7.79
+            for i, top_file in enumerate(top_files):
+                doc_id = top_file[0]
+                title = top_file[1][0]
+                score = top_file[1][1]
+                print(f"{i + 1}. ({doc_id}) {title} - Score: {score:.2f}")
         case _:
             parser.print_help()
 

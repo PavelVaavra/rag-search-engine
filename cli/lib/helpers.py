@@ -152,6 +152,31 @@ class InvertedIndex():
         N = len(self.docmap)
         df = len(self.get_documents(term_token))        
         return math.log((N - df + 0.5) / (df + 0.5) + 1)
+    
+    def bm25(self, doc_id, term):
+        bm25_tf = self.get_bm25_tf(doc_id, term)
+        bm25_idf = self.get_bm25_idf(term)
+        return bm25_tf * bm25_idf
+    
+    def bm25_search(self, query, limit):
+        # Tokenize the query.
+        # Initialize a scores dictionary, to map document IDs to their total BM25 scores.
+        # For each document in the index, calculate the total BM25 score:
+        # For each query token, add its BM25 score to the document's running total.
+        # Store the total score in the scores dictionary.
+        # Sort the documents by score in descending order.
+        # Return the top limit documents along with their scores.
+        query_tokens = process_str(query)
+        scores = {}
+        for doc_id in self.docmap.keys():
+            bm25_sum = 0
+            for query_token in query_tokens:
+                bm25_sum += self.bm25(doc_id, query_token)
+            scores[doc_id] = (self.docmap[doc_id]["title"], bm25_sum)
+        
+        sorted_scores = sorted(scores.items(), key=lambda item: item[1][1], reverse=True)
+        return sorted_scores[:limit]
+                
 
     def save(self):
         """save the index and docmap attributes to disk using the pickle module's dump function"""
@@ -250,3 +275,11 @@ def get_inverted_idx_load(DATA_PATH):
         return inverted_idx
     except Exception as e:
         raise e
+    
+def get_bm25_search_command(query, limit):
+    try:
+        inverted_idx = get_inverted_idx_load(DATA_PATH)
+    except Exception as e:
+        print(e)
+
+    return inverted_idx.bm25_search(query, limit)
