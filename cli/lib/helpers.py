@@ -16,7 +16,9 @@ from .search_utils import (
     INDEX_FILE_NAME,
     DOCMAP_FILE_NAME,
     TERM_FREQUENCIES_FILE_NAME,
-    BM25_K1
+    DOC_LENGTHS_FILE_NAME,
+    BM25_K1,
+    BM25_B
 )
 
 def process_str(text):
@@ -70,16 +72,30 @@ class InvertedIndex():
         self.docmap = {}
         # a dictionary of document IDs to Counter objects for keeping track of how many times each term appears in each document
         self.term_frequencies = {}
+        # a dictionary of document IDs to their lengths
+        self.doc_lengths = {}
 
     def __add_document(self, doc_id, text):
         """tokenize the input text, then add each token to the index with the document ID"""
         text_tokens = process_str(text)
         self.term_frequencies[doc_id].update(text_tokens)
+        self.doc_lengths[doc_id] = len(text_tokens)
         for text_token in text_tokens:
             try:
                 self.index[text_token].add(doc_id)
             except KeyError:
                 self.index[text_token] = {doc_id}
+
+    def __get_avg_doc_length(self):
+        number_docs = len(self.doc_lengths)
+        if number_docs == 0:
+            return 0.0
+        
+        accumulated_length = 0
+        for length in self.doc_lengths.values():
+            accumulated_length += length
+
+        return accumulated_length / number_docs
 
     def get_documents(self, term):
         """get the set of document IDs for a given token, and return them as a list, sorted in ascending order"""
@@ -116,9 +132,15 @@ class InvertedIndex():
         except KeyError:
             return 0
         
-    def get_bm25_tf(self, doc_id, term, k1=BM25_K1):
+    def get_bm25_tf(self, doc_id, term, k1=BM25_K1, b=BM25_B):
+        doc_length = self.doc_lengths[doc_id]
+        avg_doc_length = self.__get_avg_doc_length()
+        # Length normalization factor
+        length_norm = 1 - b + b * (doc_length / avg_doc_length)
+        
         tf = self.get_tf(doc_id, term)
-        return (tf * (k1 + 1)) / (tf + k1)
+        # Apply to term frequency
+        return (tf * (k1 + 1)) / (tf + k1 * length_norm)
         
     def get_bm25_idf(self, term):
         """"""
@@ -147,6 +169,9 @@ class InvertedIndex():
         with open(os.path.join(CACHE_DIR, TERM_FREQUENCIES_FILE_NAME), "wb") as file:
             pickle.dump(self.term_frequencies, file)
 
+        with open(os.path.join(CACHE_DIR, DOC_LENGTHS_FILE_NAME), "wb") as file:
+            pickle.dump(self.doc_lengths, file)
+
     def load(self):
         """load the index and docmap from disk using the pickle module's load function"""
         # use cache/index.pkl for the index
@@ -169,6 +194,12 @@ class InvertedIndex():
                 self.term_frequencies = pickle.load(file)
         except FileNotFoundError:
             raise Exception("cache/term_frequencies.pkl is missing")
+        
+        try:
+            with open(os.path.join(CACHE_DIR, DOC_LENGTHS_FILE_NAME), "rb") as file:
+                self.doc_lengths = pickle.load(file)
+        except FileNotFoundError:
+            raise Exception("cache/doc_lengths.pkl is missing")
 
 def build_idx():
     inverted_idx = InvertedIndex(DATA_PATH)
@@ -183,13 +214,13 @@ def get_tf(id, term):
 
     return inverted_idx.get_tf(id, term)
 
-def bm25_tf_command(id, term, k1=BM25_K1):
+def bm25_tf_command(id, term, k1=BM25_K1, b=BM25_B):
     try:
         inverted_idx = get_inverted_idx_load(DATA_PATH)
     except Exception as e:
         print(e)
 
-    return inverted_idx.get_bm25_tf(id, term, k1)
+    return inverted_idx.get_bm25_tf(id, term, k1, b)
 
 def get_idf(term):
     try:
