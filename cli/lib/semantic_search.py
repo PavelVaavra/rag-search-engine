@@ -92,3 +92,13 @@ def verify_embeddings():
 
     print(f"Number of docs:   {len(documents)}")
     print(f"Embeddings shape: {embeddings.shape[0]} vectors in {embeddings.shape[1]} dimensions")
+
+def embed_query_text(query):
+    # Create an instance of the SemanticSearch class.
+    # Call your existing generate_embedding method with the provided query (this method already handles whitespace stripping and validation).
+    # Print information about the query and its embedding:
+    semantic_search = SemanticSearch()
+    embedding = semantic_search.generate_embedding(query)
+    print(f"Query: {query}")
+    print(f"First 5 dimensions: {embedding[:5]}")
+    print(f"Shape: {embedding.shape}")
