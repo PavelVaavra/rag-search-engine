@@ -162,3 +162,15 @@ def search(query, limit):
         print(f"{i + 1}. {movie["title"]} (score: {movie["score"]:.4f})")
         print(f"{movie["description"][:100]}...")
         print("===========================")
+
+def chunk(text, size):
+    words = text.split()
+    chunks = []
+    while len(words) > size:
+        chunks.append(words[:size])
+        words = words[size:]
+    chunks.append(words)
+    
+    print(f"Chunking {len(text)} characters")
+    for i, chunk in enumerate(chunks):
+        print(f"{i + 1}. {" ".join(chunk)}")
