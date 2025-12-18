@@ -6,8 +6,11 @@ from lib.semantic_search import (
     verify_model,
     embed_text,
     verify_embeddings,
-    embed_query_text
+    embed_query_text,
+    search
 )
+
+from lib.search_utils import DEFAULT_SEARCH_LIMIT
 
 def main():
     parser = argparse.ArgumentParser(description="Semantic Search CLI")
@@ -23,6 +26,10 @@ def main():
     embedding_query_parser = subparsers.add_parser("embedquery", help="Create an embedding from the query")
     embedding_query_parser.add_argument("query", type=str, help="query which an embedding will be created from")
 
+    search_parser = subparsers.add_parser("search", help="Search movies semantically")
+    search_parser.add_argument("query", type=str, help="Search query")
+    search_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="How many top documents should be shown")
+
     args = parser.parse_args()
 
     match args.command:
@@ -33,7 +40,9 @@ def main():
         case "verify_embeddings":
             verify_embeddings()
         case "embedquery":
-            embed_text(args.query)
+            embed_query_text(args.query)
+        case "search":
+            search(args.query, args.limit)
         case _:
             parser.print_help()
 

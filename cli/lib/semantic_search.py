@@ -63,7 +63,37 @@ class SemanticSearch():
 
         if len(self.embeddings) == len(self.documents):
             return self.embeddings
-                                 
+    
+    def search(self, query, limit):
+        # Generate an embedding for the query using self.generate_embedding(query).
+        # Calculate cosine similarity between the query embedding and each document embedding.
+        # Create a list of (similarity_score, document) tuples.
+        # Sort the list by similarity score in descending order.
+        # Return the top results (up to limit) as a list of dictionaries, each containing:
+        #     score: The cosine similarity score
+        #     title: The movie title
+        #     description: The movie description
+        if len(self.embeddings) == 0:
+            raise ValueError("No embeddings loaded. Call `load_or_create_embeddings` first.")
+        
+        embedding = self.generate_embedding(query)
+        similarity = []
+        for i, doc in enumerate(self.document_map.values()):
+            similarity.append((cosine_similarity(self.embeddings[i], embedding), doc))
+
+        sorted_similarity = sorted(similarity, key=lambda item: item[0], reverse=True)
+
+        sorted_similarity = sorted_similarity[:limit]
+        result = []
+        for item in sorted_similarity:
+            result_item = {}
+            result_item["score"] = item[0]
+            result_item["title"] = item[1]["title"]
+            result_item["description"] = item[1]["description"]
+            result.append(result_item)
+
+        return result
+
 
 def verify_model():
     semantic_search = SemanticSearch()
@@ -102,3 +132,33 @@ def embed_query_text(query):
     print(f"Query: {query}")
     print(f"First 5 dimensions: {embedding[:5]}")
     print(f"Shape: {embedding.shape}")
+
+def cosine_similarity(vec1, vec2):
+    dot_product = np.dot(vec1, vec2)
+    norm1 = np.linalg.norm(vec1)
+    norm2 = np.linalg.norm(vec2)
+
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+
+    return dot_product / (norm1 * norm2)
+
+def search(query, limit):
+    # It should accept a positional query string argument.
+    # Accept an optional --limit argument (default 5).
+    # It should create a SemanticSearch instance.
+    # Load movies and load/create embeddings.
+    # Call the search method with the query and limit.
+    # Print the results in this format:
+    semantic_search = SemanticSearch()
+    with open(DATA_PATH, "r") as file:
+        documents = json.load(file)["movies"]
+
+    semantic_search.load_or_create_embeddings(documents)
+
+    top_similarities = semantic_search.search(query, limit)
+    
+    for i, movie in enumerate(top_similarities):
+        print(f"{i + 1}. {movie["title"]} (score: {movie["score"]:.4f})")
+        print(f"{movie["description"][:100]}...")
+        print("===========================")
