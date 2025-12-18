@@ -163,13 +163,17 @@ def search(query, limit):
         print(f"{movie["description"][:100]}...")
         print("===========================")
 
-def chunk(text, size):
+def chunk(text, size, overlap):
     words = text.split()
     chunks = []
     while len(words) > size:
         chunks.append(words[:size])
         words = words[size:]
     chunks.append(words)
+
+    if len(chunks) > 1 and overlap > 0:
+        for i in range(1, len(chunks)):
+            chunks[i] = chunks[i - 1][-overlap:] + chunks[i]
     
     print(f"Chunking {len(text)} characters")
     for i, chunk in enumerate(chunks):

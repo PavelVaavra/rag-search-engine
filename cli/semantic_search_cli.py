@@ -11,7 +11,7 @@ from lib.semantic_search import (
     chunk
 )
 
-from lib.search_utils import DEFAULT_SEARCH_LIMIT, DEFAULT_CHUNK_SIZE
+from lib.search_utils import DEFAULT_SEARCH_LIMIT, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP
 
 def main():
     parser = argparse.ArgumentParser(description="Semantic Search CLI")
@@ -34,6 +34,7 @@ def main():
     chunk_parser = subparsers.add_parser("chunk", help="Chunk text")
     chunk_parser.add_argument("text", type=str, help="Text to chunk")
     chunk_parser.add_argument("--chunk-size", type=int, default=DEFAULT_CHUNK_SIZE, help="Chunk size")
+    chunk_parser.add_argument("--overlap", type=int, default=DEFAULT_CHUNK_OVERLAP, help="How many words should overlap")
 
     args = parser.parse_args()
 
@@ -49,7 +50,7 @@ def main():
         case "search":
             search(args.query, args.limit)
         case "chunk":
-            chunk(args.text, args.chunk_size)
+            chunk(args.text, args.chunk_size, args.overlap)
         case _:
             parser.print_help()
 
