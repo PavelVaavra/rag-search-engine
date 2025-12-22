@@ -2,6 +2,7 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 import os
 import json
+import re
 
 from .search_utils import (
     CACHE_DIR,
@@ -168,13 +169,21 @@ def chunk(text, size, overlap):
     chunks = []
     while len(words) > size:
         chunks.append(words[:size])
-        words = words[size:]
+        words = words[size - overlap:]
     chunks.append(words)
-
-    if len(chunks) > 1 and overlap > 0:
-        for i in range(1, len(chunks)):
-            chunks[i] = chunks[i - 1][-overlap:] + chunks[i]
     
     print(f"Chunking {len(text)} characters")
+    for i, chunk in enumerate(chunks):
+        print(f"{i + 1}. {" ".join(chunk)}")
+
+def semantic_chunk(text, max_size, overlap):
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    chunks = []
+    while len(sentences) > max_size:
+        chunks.append(sentences[:max_size])
+        sentences = sentences[max_size - overlap:]
+    chunks.append(sentences)
+    
+    print(f"Semantically chunking {len(text)} characters")
     for i, chunk in enumerate(chunks):
         print(f"{i + 1}. {" ".join(chunk)}")
