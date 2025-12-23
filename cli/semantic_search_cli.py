@@ -11,7 +11,8 @@ from lib.semantic_search import (
     chunk,
     semantic_chunk,
     semantic_chunk_print,
-    embed_chunks
+    embed_chunks,
+    search_chunked
 )
 
 from lib.search_utils import (
@@ -51,6 +52,10 @@ def main():
 
     subparsers.add_parser("embed_chunks", help="Embed chunks")
 
+    search_chunked_parser = subparsers.add_parser("search_chunked", help="Search chunks semantically")
+    search_chunked_parser.add_argument("query", type=str, help="Search query")
+    search_chunked_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="How many top documents should be shown")
+
     args = parser.parse_args()
 
     match args.command:
@@ -71,6 +76,8 @@ def main():
             semantic_chunk_print(chunks, len(args.text))
         case "embed_chunks":
             embed_chunks()
+        case "search_chunked":
+            search_chunked(args.query, args.limit)
         case _:
             parser.print_help()
 

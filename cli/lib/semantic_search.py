@@ -146,11 +146,46 @@ class ChunkedSemanticSearch(SemanticSearch):
         with open(os.path.join(CACHE_DIR, CHUNK_EMBEDDINGS_FILE_NAME),"rb") as file:
             self.chunk_embeddings = np.load(file)
 
-        with open(os.path.join(CACHE_DIR, CHUNK_METADATA_FILE_NAME),"rb") as file:
-            self.chunk_metadata = json.load(file)
+        with open(os.path.join(CACHE_DIR, CHUNK_METADATA_FILE_NAME),"r") as file:
+            self.chunk_metadata = json.load(file)["chunks"]
 
         return self.chunk_embeddings
+    
+    def search_chunks(self, query, limit=10):
+        embedding = self.generate_embedding(query)
+        chunk_scores = []
+        for i in range(len(self.chunk_embeddings)):
+            chunk_scores_item = {}
+            chunk_scores_item["chunk_idx"] = self.chunk_metadata[i]["chunk_idx"]
+            chunk_scores_item["movie_idx"] = self.chunk_metadata[i]["movie_idx"]
+            chunk_scores_item["score"] = cosine_similarity(self.chunk_embeddings[i], embedding)
+            chunk_scores.append(chunk_scores_item)
 
+        idx_to_scores = {}
+        for chunk_score in chunk_scores:
+            try:
+                if idx_to_scores[chunk_score["movie_idx"]] < chunk_score["score"]:
+                    idx_to_scores[chunk_score["movie_idx"]] = chunk_score["score"]
+            except KeyError:
+                idx_to_scores[chunk_score["movie_idx"]] = chunk_score["score"]
+
+        idx_to_scores = dict(sorted(idx_to_scores.items(), key=lambda item: item[1], reverse=True))
+        idx_to_scores = dict(list(idx_to_scores.items())[:limit])
+
+        results = []
+        for i, idx_to_score in enumerate(idx_to_scores.items()):
+            movie_idx = idx_to_score[0]
+            results.append(
+                {
+                    "id": movie_idx,
+                    "title": self.document_map[movie_idx]["title"],
+                    "description": self.document_map[movie_idx]["description"][:100],
+                    "score": round(idx_to_score[1], 4),
+                    "metadata": {}
+                }
+            )
+
+        return results
 
 def verify_model():
     semantic_search = SemanticSearch()
@@ -229,6 +264,23 @@ def search(query, limit):
         print(f"{i + 1}. {movie["title"]} (score: {movie["score"]:.4f})")
         print(f"{movie["description"][:100]}...")
         print("===========================")
+
+def search_chunked(query, limit):
+    # Load the movie documents using load_movies().
+    # Initialize a ChunkedSemanticSearch instance.
+    # Load or create chunk embeddings.
+    # Get the results using the search_chunks method with the given query and limit arguments.
+    # Print results in the following format:
+    chunked_semantic_search = ChunkedSemanticSearch()
+    documents = get_documents(DATA_PATH)
+
+    chunked_semantic_search.load_or_create_chunk_embeddings(documents)
+
+    top_similarities = chunked_semantic_search.search_chunks(query, limit)
+
+    for i, movie in enumerate(top_similarities):
+        print(f"\n{i + 1}. {movie["title"]} (score: {movie["score"]:.4f})")
+        print(f"   {movie["description"]}...")
 
 def chunk(text, size, overlap):
     words = text.split()
