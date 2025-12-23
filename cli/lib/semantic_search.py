@@ -7,7 +7,9 @@ import re
 from .search_utils import (
     CACHE_DIR,
     MOVIE_EMBEDDINGS_FILE_NAME,
-    DATA_PATH
+    DATA_PATH,
+    CHUNK_EMBEDDINGS_FILE_NAME,
+    CHUNK_METADATA_FILE_NAME
 )
 
 class SemanticSearch():
@@ -94,6 +96,60 @@ class SemanticSearch():
             result.append(result_item)
 
         return result
+    
+class ChunkedSemanticSearch(SemanticSearch):
+    def __init__(self):
+        super().__init__()
+        self.chunk_embeddings = None
+        self.chunk_metadata = None
+
+    def build_chunk_embeddings(self, documents):
+        self.documents = documents
+        chunks = []
+        chunk_metadata = []
+        for doc in self.documents:
+            self.document_map[doc["id"]] = doc
+            if doc["description"] == "":
+                continue
+            doc_chunks = semantic_chunk(doc["description"], 4, 1)
+            chunks.extend(doc_chunks)
+            doc_chunk_metadata = []
+            for i in range(len(doc_chunks)):
+                doc_chunk_metadata_item = {}
+                doc_chunk_metadata_item["movie_idx"] = doc["id"]
+                doc_chunk_metadata_item["chunk_idx"] = i + 1
+                doc_chunk_metadata_item["total_chunks"] = len(doc_chunks)
+                doc_chunk_metadata.append(doc_chunk_metadata_item)
+            chunk_metadata.extend(doc_chunk_metadata)
+
+
+        self.chunk_embeddings = self.model.encode(chunks, show_progress_bar=True)
+        self.chunk_metadata = chunk_metadata
+
+        with open(os.path.join(CACHE_DIR, CHUNK_EMBEDDINGS_FILE_NAME),"wb") as file:
+            np.save(file, self.chunk_embeddings)
+
+        with open(os.path.join(CACHE_DIR, CHUNK_METADATA_FILE_NAME),"w") as file:
+            json.dump({"chunks": self.chunk_metadata, "total_chunks": len(chunks)}, file, indent=2)
+
+        return self.chunk_embeddings
+
+    def load_or_create_chunk_embeddings(self, documents):
+        if not os.path.exists(os.path.join(CACHE_DIR, CHUNK_EMBEDDINGS_FILE_NAME)) and \
+            not os.path.exists(os.path.join(CACHE_DIR, CHUNK_METADATA_FILE_NAME)):
+            return self.build_chunk_embeddings(documents)
+        
+        self.documents = documents
+        for doc in self.documents:
+            self.document_map[doc["id"]] = doc
+
+        with open(os.path.join(CACHE_DIR, CHUNK_EMBEDDINGS_FILE_NAME),"rb") as file:
+            self.chunk_embeddings = np.load(file)
+
+        with open(os.path.join(CACHE_DIR, CHUNK_METADATA_FILE_NAME),"rb") as file:
+            self.chunk_metadata = json.load(file)
+
+        return self.chunk_embeddings
 
 
 def verify_model():
@@ -116,13 +172,24 @@ def embed_text(text):
 # Print the number of documents and the shape of the embeddings:
 def verify_embeddings():
     semantic_search = SemanticSearch()
-    with open(DATA_PATH, "r") as file:
-        documents = json.load(file)["movies"]
+    documents = get_documents(DATA_PATH)
 
     embeddings = semantic_search.load_or_create_embeddings(documents)
 
     print(f"Number of docs:   {len(documents)}")
     print(f"Embeddings shape: {embeddings.shape[0]} vectors in {embeddings.shape[1]} dimensions")
+
+def embed_chunks():
+    # Load the movie documents
+    # Initialize a ChunkedSemanticSearch instance
+    # Load or build the chunk embeddings
+    # Print info about the embeddings in this format:
+    chunked_semantic_search = ChunkedSemanticSearch()
+    documents = get_documents(DATA_PATH)
+
+    embeddings = chunked_semantic_search.load_or_create_chunk_embeddings(documents)
+
+    print(f"Generated {len(embeddings)} chunked embeddings")
 
 def embed_query_text(query):
     # Create an instance of the SemanticSearch class.
@@ -152,8 +219,7 @@ def search(query, limit):
     # Call the search method with the query and limit.
     # Print the results in this format:
     semantic_search = SemanticSearch()
-    with open(DATA_PATH, "r") as file:
-        documents = json.load(file)["movies"]
+    documents = get_documents(DATA_PATH)
 
     semantic_search.load_or_create_embeddings(documents)
 
@@ -180,10 +246,16 @@ def semantic_chunk(text, max_size, overlap):
     sentences = re.split(r"(?<=[.!?])\s+", text)
     chunks = []
     while len(sentences) > max_size:
-        chunks.append(sentences[:max_size])
+        chunks.append(" ".join(sentences[:max_size]))
         sentences = sentences[max_size - overlap:]
-    chunks.append(sentences)
-    
-    print(f"Semantically chunking {len(text)} characters")
+    chunks.append(" ".join(sentences))
+    return chunks
+
+def semantic_chunk_print(chunks, text_len):
+    print(f"Semantically chunking {text_len} characters")
     for i, chunk in enumerate(chunks):
-        print(f"{i + 1}. {" ".join(chunk)}")
+        print(f"{i + 1}. {chunk}")
+
+def get_documents(path):
+    with open(path, "r") as file:
+        return json.load(file)["movies"]
