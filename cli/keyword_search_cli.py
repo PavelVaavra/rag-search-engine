@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-from lib.helpers import (
+from lib.keyword_search import (
     get_movies_by_keyword, 
     build_idx, 
     get_tf, 
