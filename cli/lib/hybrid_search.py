@@ -24,3 +24,18 @@ class HybridSearch:
 
     def rrf_search(self, query, k, limit=10):
         raise NotImplementedError("RRF hybrid search is not implemented yet.")
+    
+def normalize(scores):
+    # If no scores are given don't print anything
+    # If the minimum and maximum scores are the same, print a list of 1.0 values
+    # Otherwise, print the new normalized scores using the min-max normalization described above
+    # Print in the following format using print(f"* {score:.4f}") to only print 4 decimal places:
+    maximum = max(scores)
+    minimum = min(scores)
+    if maximum == minimum:
+        normalized_scores = [1.0 for i in range(len(scores))]
+    else:
+        normalized_scores = [(score - minimum) / (maximum - minimum) for score in scores]
+
+    for normalize_score in normalized_scores:
+        print(f"* {normalize_score:.4f}")
