@@ -295,7 +295,22 @@ def chunk(text, size, overlap):
         print(f"{i + 1}. {" ".join(chunk)}")
 
 def semantic_chunk(text, max_size, overlap):
-    sentences = re.split(r"(?<=[.!?])\s+", text)
+    # Strip leading and trailing whitespace from the input text before using the regex to split sentences.
+    # If there's nothing left after stripping, return an empty list.
+    # After splitting sentences, if there's only one sentence and it doesn't end with a punctuation mark like ., !, or ?, treat the 
+    # whole text as one sentence.
+    # Strip leading and trailing whitespace from each sentence before appending it to the chunk list.
+    # Only use chunks that still have content after the stripping.
+    text = text.strip()
+    if not text:
+        return []
+    
+    raw_sentences = re.split(r"(?<=[.!?])\s+", text)
+    sentences = [raw_sentence.strip() for raw_sentence in raw_sentences if raw_sentence.strip() is not None]
+
+    if len(sentences) == 1 and sentences[0][-1] not in (".", "!", "?"):
+        return sentences
+
     chunks = []
     while len(sentences) > max_size:
         chunks.append(" ".join(sentences[:max_size]))
