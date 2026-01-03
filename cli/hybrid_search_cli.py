@@ -4,6 +4,8 @@ from lib.hybrid_search import normalize, weighted_search, rrf_search
 
 from lib.search_utils import DEFAULT_SEARCH_LIMIT, DEFAULT_ALPHA, DEFAULT_RRF_K
 
+from gemini_api import enhance
+
 def main():
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -20,6 +22,7 @@ def main():
     rrf_search_parser.add_argument("query", type=str, help="Search query")
     rrf_search_parser.add_argument("-k", type=int, default=DEFAULT_RRF_K, help="Reciprocal Rank Fusion constant")
     rrf_search_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="How many top documents should be shown")
+    rrf_search_parser.add_argument("--enhance", type=str, choices=["spell"], help="Query enhancement method")
 
     args = parser.parse_args()
 
@@ -44,7 +47,10 @@ def main():
                 print(f"{description}\n")
 
         case "rrf-search":
-            docs = rrf_search(args.query, args.k, args.limit)
+            if args.enhance:
+                enhanced_query = enhance(args.enhance, args.query)
+
+            docs = rrf_search(enhanced_query, args.k, args.limit)
             for i, item in enumerate(docs.items()):
                 key = item[0]
                 title = item[1][3]
