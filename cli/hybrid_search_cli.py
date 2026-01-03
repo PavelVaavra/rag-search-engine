@@ -22,7 +22,7 @@ def main():
     rrf_search_parser.add_argument("query", type=str, help="Search query")
     rrf_search_parser.add_argument("-k", type=int, default=DEFAULT_RRF_K, help="Reciprocal Rank Fusion constant")
     rrf_search_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="How many top documents should be shown")
-    rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite"], help="Query enhancement method")
+    rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
 
     args = parser.parse_args()
 
