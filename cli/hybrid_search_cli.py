@@ -1,8 +1,8 @@
 import argparse
 
-from lib.hybrid_search import normalize, weighted_search
+from lib.hybrid_search import normalize, weighted_search, rrf_search
 
-from lib.search_utils import DEFAULT_SEARCH_LIMIT, DEFAULT_ALPHA
+from lib.search_utils import DEFAULT_SEARCH_LIMIT, DEFAULT_ALPHA, DEFAULT_RRF_K
 
 def main():
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
@@ -15,6 +15,11 @@ def main():
     weighted_search_parser.add_argument("query", type=str, help="Search query")
     weighted_search_parser.add_argument("--alpha", type=float, default=DEFAULT_ALPHA, help="Weighting constant")
     weighted_search_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="How many top documents should be shown")
+
+    rrf_search_parser = subparsers.add_parser("rrf-search", help="Reciprocal Rank Fusion search")
+    rrf_search_parser.add_argument("query", type=str, help="Search query")
+    rrf_search_parser.add_argument("-k", type=int, default=DEFAULT_RRF_K, help="Reciprocal Rank Fusion constant")
+    rrf_search_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="How many top documents should be shown")
 
     args = parser.parse_args()
 
@@ -36,6 +41,20 @@ def main():
                 print(f"{i + 1}. {title}")
                 print(f"Hybrid Score: {hybrid_score:.3f}")
                 print(f"BM25: {keyword_score:.3f}, Semantic: {semantic_score:.3f}")
+                print(f"{description}\n")
+
+        case "rrf-search":
+            docs = rrf_search(args.query, args.k, args.limit)
+            for i, item in enumerate(docs.items()):
+                key = item[0]
+                title = item[1][3]
+                rrf_score = item[1][2]
+                keyword_rank = item[1][0]
+                semantic_rank = item[1][1]
+                description = item[1][4]
+                print(f"{i + 1}. {title}")
+                print(f"RRF Score: {rrf_score:.3f}")
+                print(f"BM25 Rank: {keyword_rank}, Semantic Rank: {semantic_rank}")
                 print(f"{description}\n")
 
         case _:

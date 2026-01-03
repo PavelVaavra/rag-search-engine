@@ -17,18 +17,21 @@ class HybridSearch:
     def _bm25_search(self, query, limit):
         self.idx.load()
         return self.idx.bm25_search(query, limit)
-
-    def weighted_search(self, query, alpha, limit=5):
+    
+    def _tuple_to_list_bm25_search(self, lst_of_tuples):
         # [(1771, ('Paddington', 10.489448461845111))]
-        keyword_results = self._bm25_search(query, 500 * limit)
         # convert tuple to list
         keyword_results_lst = []
-        for keyword_result in keyword_results:
+        for keyword_result in lst_of_tuples:
             lst = []
             lst.append(keyword_result[0])
             lst.append(list(keyword_result[1]))
             keyword_results_lst.append(lst)
-        keyword_results = keyword_results_lst
+
+        return keyword_results_lst
+
+    def weighted_search(self, query, alpha, limit=5):
+        keyword_results = self._tuple_to_list_bm25_search(self._bm25_search(query, 500 * limit))
 
         keyword_scores = [keyword_result[1][1] for keyword_result in keyword_results]
         keyword_scores_normalized = normalize(keyword_scores)
@@ -51,6 +54,17 @@ class HybridSearch:
         # Add a third score (the hybrid score) to each document - calculate this using the hybrid_score function described above.
         # Return the results sorted by the hybrid score in descending order.
         # { id: [keyword_score, semantic_score, hybrid_score, title, description] }
+        id_to_scores = self._combine_keyword_semantic(keyword_results, semantic_results)
+
+        for key, value in id_to_scores.items():
+            id_to_scores[key][2] = hybrid_score(value[0], value[1], alpha)
+            id_to_scores[key][3] = f"{self.semantic_search.document_map[key]['title']}"
+            id_to_scores[key][4] = f"{self.semantic_search.document_map[key]['description'][:100]}..."
+
+        id_to_scores = dict(sorted(id_to_scores.items(), key=lambda item: item[1][2], reverse=True))
+        return dict(list(id_to_scores.items())[:limit])
+    
+    def _combine_keyword_semantic(self, keyword_results, semantic_results):
         id_to_scores = {}
         for i in range(len(keyword_results)):
             id = keyword_results[i][0]
@@ -67,16 +81,34 @@ class HybridSearch:
             except KeyError:
                 id_to_scores[id] = [0, score, 0, "", ""]
 
+        return id_to_scores
+
+    def rrf_search(self, query, k, limit=10):
+        keyword_results = self._tuple_to_list_bm25_search(self._bm25_search(query, 500 * limit))
+        keyword_results.sort(key=lambda item: item[1][1], reverse=True)
+        for i in range(len(keyword_results)):
+            keyword_results[i][1][1] = i + 1
+
+        semantic_results = self.semantic_search.search_chunks(query, 500 * limit)
+        semantic_results.sort(key=lambda item: item["score"], reverse=True)
+        for i in range(len(semantic_results)):
+            semantic_results[i]["score"] = i + 1
+
+        # { id: [keyword_score, semantic_score, hybrid_score, title, description] }
+        id_to_scores = self._combine_keyword_semantic(keyword_results, semantic_results)
+
         for key, value in id_to_scores.items():
-            id_to_scores[key][2] = hybrid_score(value[0], value[1], alpha)
+            rrf_score_keyword = 0 if value[0] == 0 else rrf_score(value[0], k)
+            rrf_score_semantic = 0 if value[1] == 0 else rrf_score(value[1], k)
+            id_to_scores[key][2] = rrf_score_keyword + rrf_score_semantic
             id_to_scores[key][3] = f"{self.semantic_search.document_map[key]['title']}"
             id_to_scores[key][4] = f"{self.semantic_search.document_map[key]['description'][:100]}..."
 
         id_to_scores = dict(sorted(id_to_scores.items(), key=lambda item: item[1][2], reverse=True))
         return dict(list(id_to_scores.items())[:limit])
 
-    def rrf_search(self, query, k, limit=10):
-        raise NotImplementedError("RRF hybrid search is not implemented yet.")
+def rrf_score(rank, k=60):
+    return 1 / (k + rank)
     
 def hybrid_score(bm25_score, semantic_score, alpha=0.5):
     return alpha * bm25_score + (1 - alpha) * semantic_score
@@ -93,3 +125,9 @@ def weighted_search(query, alpha, limit):
     hybrid_search = HybridSearch(documents)
 
     return hybrid_search.weighted_search(query, alpha, limit)
+
+def rrf_search(query, k, limit):
+    documents = get_documents(DATA_PATH)
+    hybrid_search = HybridSearch(documents)
+
+    return hybrid_search.rrf_search(query, k, limit)

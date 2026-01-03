@@ -5,6 +5,7 @@ DEFAULT_CHUNK_SIZE = 200
 DEFAULT_CHUNK_OVERLAP = 0
 DEFAULT_MAX_CHUNK_SIZE = 4
 DEFAULT_ALPHA = 0.5
+DEFAULT_RRF_K = 60
 
 PROJECT_ROOT = "/home/pavel/workspace/github.com/PavelVaavra/rag-search-engine"
 DATA_PATH = os.path.join(PROJECT_ROOT, "data", "movies.json")
