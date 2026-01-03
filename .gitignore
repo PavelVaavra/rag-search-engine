@@ -13,3 +13,5 @@ data/
 uv.lock
 assignments
 cache/
+
+.env
