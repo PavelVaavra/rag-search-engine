@@ -1,4 +1,5 @@
 import os
+from time import sleep
 from dotenv import load_dotenv
 from google import genai
 
@@ -82,3 +83,35 @@ def enhance(method, query):
     print(f"Enhanced query ({method}): '{query}' -> '{enhanced_query}'\n")
 
     return enhanced_query
+
+def rerank_individual(docs, query):
+    # { id: [keyword_score, semantic_score, hybrid_score, title, description] }
+    client = genai.Client(api_key=api_key)
+
+    for _, lst in docs.items():
+        title = lst[3]
+        description = lst[4]
+        prompt = f"""Rate how well this movie matches the search query.
+
+Query: "{query}"
+Movie: {title} - {description}
+
+Consider:
+- Direct relevance to query
+- User intent (what they're looking for)
+- Content appropriateness
+
+Rate 0-10 (10 = perfect match).
+Give me ONLY the number in your response, no other text or explanation.
+
+Score:"""
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=prompt
+        )
+        lst.append(response.text)
+        sleep(10)
+    
+    docs = dict(sorted(docs.items(), key=lambda item: int(item[1][5]), reverse=True))
+
+    return docs

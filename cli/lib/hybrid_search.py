@@ -102,7 +102,7 @@ class HybridSearch:
             rrf_score_semantic = 0 if value[1] == 0 else rrf_score(value[1], k)
             id_to_scores[key][2] = rrf_score_keyword + rrf_score_semantic
             id_to_scores[key][3] = f"{self.semantic_search.document_map[key]['title']}"
-            id_to_scores[key][4] = f"{self.semantic_search.document_map[key]['description'][:100]}..."
+            id_to_scores[key][4] = f"{self.semantic_search.document_map[key]['description']}"
 
         id_to_scores = dict(sorted(id_to_scores.items(), key=lambda item: item[1][2], reverse=True))
         return dict(list(id_to_scores.items())[:limit])

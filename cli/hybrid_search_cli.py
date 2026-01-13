@@ -4,7 +4,7 @@ from lib.hybrid_search import normalize, weighted_search, rrf_search
 
 from lib.search_utils import DEFAULT_SEARCH_LIMIT, DEFAULT_ALPHA, DEFAULT_RRF_K
 
-from gemini_api import enhance
+from gemini_api import enhance, rerank_individual
 
 def main():
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
@@ -23,6 +23,7 @@ def main():
     rrf_search_parser.add_argument("-k", type=int, default=DEFAULT_RRF_K, help="Reciprocal Rank Fusion constant")
     rrf_search_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="How many top documents should be shown")
     rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
+    rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual"], help="Rerank method")
 
     args = parser.parse_args()
 
@@ -35,7 +36,6 @@ def main():
         case "weighted-search":
             docs = weighted_search(args.query, args.alpha, args.limit)
             for i, item in enumerate(docs.items()):
-                key = item[0]
                 title = item[1][3]
                 hybrid_score = item[1][2]
                 keyword_score = item[1][0]
@@ -48,20 +48,28 @@ def main():
 
         case "rrf-search":
             if args.enhance:
-                enhanced_query = enhance(args.enhance, args.query)
+                args.query = enhance(args.enhance, args.query)
+            
+            limit = args.limit * 5 if args.rerank_method else args.limit
 
-            docs = rrf_search(enhanced_query, args.k, args.limit)
-            for i, item in enumerate(docs.items()):
-                key = item[0]
+            docs = rrf_search(args.query, args.k, limit)
+                
+            if args.rerank_method == "individual":
+                docs = rerank_individual(docs, args.query)
+
+            for i, item in enumerate(docs.items()):  
                 title = item[1][3]
                 rrf_score = item[1][2]
                 keyword_rank = item[1][0]
                 semantic_rank = item[1][1]
                 description = item[1][4]
                 print(f"{i + 1}. {title}")
+                if args.rerank_method == "individual":
+                    rerank_score = float(item[1][5])
+                    print(f"Rerank Score: {rerank_score:.3f}/10")
                 print(f"RRF Score: {rrf_score:.3f}")
                 print(f"BM25 Rank: {keyword_rank}, Semantic Rank: {semantic_rank}")
-                print(f"{description}\n")
+                print(f"{description[:100]}...\n")
 
         case _:
             parser.print_help()
