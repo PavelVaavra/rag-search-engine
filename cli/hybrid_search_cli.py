@@ -1,10 +1,10 @@
 import argparse
 
-from lib.hybrid_search import normalize, weighted_search, rrf_search
+from lib.hybrid_search import normalize, weighted_search, rrf_search, rerank_cross_encoder
 
 from lib.search_utils import DEFAULT_SEARCH_LIMIT, DEFAULT_ALPHA, DEFAULT_RRF_K
 
-from gemini_api import enhance, rerank_individual
+from gemini_api import enhance, rerank_individual, rerank_batch
 
 def main():
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
@@ -23,7 +23,7 @@ def main():
     rrf_search_parser.add_argument("-k", type=int, default=DEFAULT_RRF_K, help="Reciprocal Rank Fusion constant")
     rrf_search_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="How many top documents should be shown")
     rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
-    rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual"], help="Rerank method")
+    rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch", "cross_encoder"], help="Rerank method")
 
     args = parser.parse_args()
 
@@ -54,8 +54,13 @@ def main():
 
             docs = rrf_search(args.query, args.k, limit)
                 
-            if args.rerank_method == "individual":
-                docs = rerank_individual(docs, args.query)
+            match args.rerank_method:
+                case "individual":
+                    docs = rerank_individual(docs, args.query)
+                case "batch":
+                    docs = rerank_batch(docs, args.query)
+                case "cross_encoder":
+                    docs = rerank_cross_encoder(docs, args.query)
 
             for i, item in enumerate(docs.items()):  
                 title = item[1][3]
@@ -67,6 +72,11 @@ def main():
                 if args.rerank_method == "individual":
                     rerank_score = float(item[1][5])
                     print(f"Rerank Score: {rerank_score:.3f}/10")
+                if args.rerank_method == "batch":
+                    print(f"Rerank Rank: {i + 1}")
+                if args.rerank_method == "cross_encoder":
+                    cross_encoder_score = item[1][5]
+                    print(f"Cross Encoder Score: {cross_encoder_score:.3f}")
                 print(f"RRF Score: {rrf_score:.3f}")
                 print(f"BM25 Rank: {keyword_rank}, Semantic Rank: {semantic_rank}")
                 print(f"{description[:100]}...\n")

@@ -1,4 +1,5 @@
 import os
+import json
 from time import sleep
 from dotenv import load_dotenv
 from google import genai
@@ -115,3 +116,41 @@ Score:"""
     docs = dict(sorted(docs.items(), key=lambda item: int(item[1][5]), reverse=True))
 
     return docs
+
+def rerank_batch(docs, query):
+    # { id: [keyword_score, semantic_score, hybrid_score, title, description] }
+    client = genai.Client(api_key=api_key)
+
+    doc_list = []
+    for id, lst in docs.items():
+        title = lst[3]
+        description = lst[4][:200]
+        movie = f"{id}: {title} - {description}"
+        doc_list.append(movie)
+
+    doc_list_str = "\n".join(doc_list)
+
+    prompt = f"""Rank these movies by relevance to the search query.
+
+Query: "{query}"
+
+Movies:
+{doc_list_str}
+
+Return ONLY the IDs in order of relevance (best match first). Return a valid JSON list, nothing else. For example:
+
+[75, 12, 34, 2, 1]
+"""
+    response = client.models.generate_content(
+        model="gemini-2.5-flash-lite",
+        contents=prompt
+    )
+    print(response.text)
+    order = json.loads(response.text.strip())
+    
+    docs_sorted = {}
+    for i in range(len(order)):
+        id = order[i]
+        docs_sorted[id] = docs[id]
+    
+    return docs_sorted

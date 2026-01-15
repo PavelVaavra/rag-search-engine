@@ -1,5 +1,5 @@
 import os
-
+from sentence_transformers import CrossEncoder
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch, get_documents
 from .search_utils import DATA_PATH
@@ -131,3 +131,23 @@ def rrf_search(query, k, limit):
     hybrid_search = HybridSearch(documents)
 
     return hybrid_search.rrf_search(query, k, limit)
+
+def rerank_cross_encoder(docs, query):
+    # { id: [keyword_score, semantic_score, hybrid_score, title, description] }
+    pairs = []
+
+    for _, lst in docs.items():
+        title = lst[3]
+        description = lst[4]
+        pairs.append([query, f"{title} - {description}"])
+
+    cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+    # scores is a list of numbers, one for each pair
+    scores = cross_encoder.predict(pairs)
+
+    for i, item in enumerate(docs.items()):
+        item[1].append(float(scores[i]))
+
+    docs = dict(sorted(docs.items(), key=lambda item: item[1][5], reverse=True))
+
+    return docs
