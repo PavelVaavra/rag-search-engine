@@ -10,6 +10,7 @@ DEFAULT_RRF_K = 60
 PROJECT_ROOT = "/home/pavel/workspace/github.com/PavelVaavra/rag-search-engine"
 DATA_PATH = os.path.join(PROJECT_ROOT, "data", "movies.json")
 STOPWORDS_PATH = os.path.join(PROJECT_ROOT, "data", "stopwords.txt")
+GOLDEN_DATASET_PATH = os.path.join(PROJECT_ROOT, "data", "golden_dataset.json")
 CACHE_DIR = os.path.join(PROJECT_ROOT, "cache")
 INDEX_FILE_NAME = "index.pkl"
 DOCMAP_FILE_NAME = "docmap.pkl"
