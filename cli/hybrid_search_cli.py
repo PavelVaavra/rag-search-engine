@@ -1,10 +1,15 @@
 import argparse
 
-from lib.hybrid_search import normalize, weighted_search, rrf_search, rerank_cross_encoder
+from lib.hybrid_search import (
+    normalize,
+    weighted_search,
+    rrf_search,
+    rerank_cross_encoder
+)
 
 from lib.search_utils import DEFAULT_SEARCH_LIMIT, DEFAULT_ALPHA, DEFAULT_RRF_K
 
-from gemini_api import enhance, rerank_individual, rerank_batch
+from gemini_api import enhance, rerank_individual, rerank_batch, evaluate
 
 def main():
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
@@ -24,6 +29,7 @@ def main():
     rrf_search_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="How many top documents should be shown")
     rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
     rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch", "cross_encoder"], help="Rerank method")
+    rrf_search_parser.add_argument("--evaluate", action="store_true", help="Evaluate results with LLM")
 
     args = parser.parse_args()
 
@@ -80,6 +86,16 @@ def main():
                 print(f"RRF Score: {rrf_score:.3f}")
                 print(f"BM25 Rank: {keyword_rank}, Semantic Rank: {semantic_rank}")
                 print(f"{description[:100]}...\n")
+
+            # 1. Bugs Bunny and the Three Bears: 2/3
+            # 2. Care Bears Movie II: A New Generation: 2/3
+            # 3. Swiss Army Man: 0/3
+            # 4. Disaster Movie: 0/3
+            if args.evaluate:
+                score = evaluate(docs, args.query)
+                for i, item in enumerate(docs.items()):
+                    title = item[1][3]
+                    print(f"{i + 1}. {title}: {score[i]}/3")
 
         case _:
             parser.print_help()

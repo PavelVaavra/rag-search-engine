@@ -154,3 +154,43 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
         docs_sorted[id] = docs[id]
     
     return docs_sorted
+
+def evaluate(docs, query):
+    # { id: [keyword_score, semantic_score, hybrid_score, title, description] }
+    client = genai.Client(api_key=api_key)
+
+    doc_list = []
+    for id, lst in docs.items():
+        title = lst[3]
+        description = lst[4]    #[:200]
+        movie = f"{title}: {description}"
+        doc_list.append(movie)
+
+    doc_list_str = "\n".join(doc_list)
+
+    prompt = f"""Rate how relevant each result is to this query on a 0-3 scale:
+
+Query: "{query}"
+
+Results:
+{doc_list_str}
+
+Scale:
+- 3: Highly relevant
+- 2: Relevant
+- 1: Marginally relevant
+- 0: Not relevant
+
+Do NOT give any numbers out than 0, 1, 2, or 3.
+
+Return ONLY the scores in the same order you were given the documents. Return a valid JSON list, nothing else. For example:
+
+[2, 0, 3, 2, 0, 1]"""
+    
+    response = client.models.generate_content(
+        model="gemini-2.5-flash-lite",
+        contents=prompt
+    )
+    # print(response.text)
+    return json.loads(response.text.strip())
+
