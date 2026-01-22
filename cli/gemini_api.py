@@ -207,7 +207,7 @@ def rag(docs, query):
 
     doc_list_str = "\n".join(doc_list)
 
-    prompt = fprompt = f"""Answer the question or provide information based on the provided documents. This should be tailored to Hoopla users. Hoopla is a movie streaming service.
+    prompt = f"""Answer the question or provide information based on the provided documents. This should be tailored to Hoopla users. Hoopla is a movie streaming service.
 
 Query: {query}
 
@@ -223,3 +223,32 @@ Provide a comprehensive answer that addresses the query:"""
 
     return response.text
 
+def summarize(docs, query):
+    # { id: [keyword_score, semantic_score, hybrid_score, title, description] }
+    client = genai.Client(api_key=api_key)
+
+    doc_list = []
+    for _, lst in docs.items():
+        title = lst[3]
+        description = lst[4]
+        movie = f"{title}: {description}"
+        doc_list.append(movie)
+
+    doc_list_str = "\n".join(doc_list)
+
+    prompt = f"""Provide information useful to this query by synthesizing information from multiple search results in detail.
+The goal is to provide comprehensive information so that users know what their options are.
+Your response should be information-dense and concise, with several key pieces of information about the genre, plot, etc. of each movie.
+This should be tailored to Hoopla users. Hoopla is a movie streaming service.
+Query: {query}
+Search Results:
+{doc_list_str}
+Provide a comprehensive 3–4 sentence answer that combines information from multiple sources:
+"""
+    
+    response = client.models.generate_content(
+        model="gemini-2.5-flash-lite",
+        contents=prompt
+    )
+
+    return response.text
