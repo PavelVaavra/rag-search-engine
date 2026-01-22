@@ -194,3 +194,32 @@ Return ONLY the scores in the same order you were given the documents. Return a 
     # print(response.text)
     return json.loads(response.text.strip())
 
+def rag(docs, query):
+    # { id: [keyword_score, semantic_score, hybrid_score, title, description] }
+    client = genai.Client(api_key=api_key)
+
+    doc_list = []
+    for _, lst in docs.items():
+        title = lst[3]
+        description = lst[4]    #[:200]
+        movie = f"{title}: {description}"
+        doc_list.append(movie)
+
+    doc_list_str = "\n".join(doc_list)
+
+    prompt = fprompt = f"""Answer the question or provide information based on the provided documents. This should be tailored to Hoopla users. Hoopla is a movie streaming service.
+
+Query: {query}
+
+Documents:
+{doc_list_str}
+
+Provide a comprehensive answer that addresses the query:"""
+    
+    response = client.models.generate_content(
+        model="gemini-2.5-flash-lite",
+        contents=prompt
+    )
+
+    return response.text
+
