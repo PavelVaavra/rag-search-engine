@@ -266,7 +266,7 @@ def citate(docs, query):
 
     doc_list_str = "\n".join(doc_list)
 
-    prompt = prompt = f"""Answer the question or provide information based on the provided documents.
+    prompt = f"""Answer the question or provide information based on the provided documents.
 
 This should be tailored to Hoopla users. Hoopla is a movie streaming service.
 
@@ -283,6 +283,43 @@ Instructions:
 - If sources disagree, mention the different viewpoints
 - If the answer isn't in the documents, say "I don't have enough information"
 - Be direct and informative
+
+Answer:"""
+    
+    response = client.models.generate_content(
+        model="gemini-2.5-flash-lite",
+        contents=prompt
+    )
+
+    return response.text
+
+def answer(docs, question):
+    # { id: [keyword_score, semantic_score, hybrid_score, title, description] }
+    client = genai.Client(api_key=api_key)
+
+    doc_list = []
+    for _, lst in docs.items():
+        title = lst[3]
+        description = lst[4]
+        movie = f"{title}: {description}"
+        doc_list.append(movie)
+
+    doc_list_str = "\n".join(doc_list)
+
+    prompt = f"""Answer the user's question based on the provided movies that are available on Hoopla.
+
+This should be tailored to Hoopla users. Hoopla is a movie streaming service.
+
+Question: {question}
+
+Documents:
+{doc_list_str}
+
+Instructions:
+- Answer questions directly and concisely
+- Be casual and conversational
+- Don't be cringe or hype-y
+- Talk like a normal person would in a chat conversation
 
 Answer:"""
     

@@ -2,7 +2,7 @@ import argparse
 
 from lib.hybrid_search import rrf_search
 from lib.search_utils import DEFAULT_RRF_K, DEFAULT_SEARCH_LIMIT
-from gemini_api import rag, summarize, citate
+from gemini_api import rag, summarize, citate, answer
 
 
 def main():
@@ -21,6 +21,10 @@ def main():
     citation_parser = subparsers.add_parser("citations", help="Add citation in the searched results")
     citation_parser.add_argument("query", type=str, help="Search query")
     citation_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="How many documents should be searched for")
+
+    question_parser = subparsers.add_parser("question", help="Answer the question from the searched results")
+    question_parser.add_argument("question", type=str, help="Question to be answered")
+    question_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="How many documents should be searched for")
 
     args = parser.parse_args()
 
@@ -58,6 +62,19 @@ def main():
             docs = rrf_search(query, DEFAULT_RRF_K, args.limit)
 
             llm_answer = citate(docs, query)
+
+            print("Search Results:")
+            for _, lst in docs.items():
+                print(f"  - {lst[3]}")
+            print(f"LLM Answer:\n{llm_answer}")
+
+        case "question":
+            question = args.question
+            
+            # { id: [keyword_score, semantic_score, hybrid_score, title, description] }
+            docs = rrf_search(question, DEFAULT_RRF_K, args.limit)
+
+            llm_answer = answer(docs, question)
 
             print("Search Results:")
             for _, lst in docs.items():
